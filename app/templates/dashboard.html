@@ -1,0 +1,281 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#09111f">
+
+  <title>CloudOps Pro | Control Center</title>
+
+  <link rel="stylesheet" href="/static/css/dashboard.css?v=14">
+  <script src="/static/js/dashboard.js?v=11" defer></script>
+</head>
+
+<body>
+  <div class="app-shell">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <a href="/" class="brand">
+        <span class="brand-icon">◈</span>
+        <span>CloudOps <strong>PRO</strong></span>
+      </a>
+
+      <p class="nav-label">WORKSPACE</p>
+
+      <nav aria-label="Main navigation">
+        <a href="/" class="nav-item active">
+          ◫ &nbsp; Overview
+        </a>
+
+        <a href="#tasks" class="nav-item">
+          ☷ &nbsp; Task Board
+        </a>
+
+        <a href="#infrastructure" class="nav-item">
+          ◇ &nbsp; Infrastructure
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <span class="status-dot"></span>
+        DevOps Control Center
+        <small>Platform v1.0</small>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+
+      <!-- HEADER -->
+      <header class="topbar">
+        <div>
+          <span class="eyebrow">
+            CLOUD OPERATIONS / OVERVIEW
+          </span>
+
+          <h1>
+            Command Center<span class="accent">.</span>
+          </h1>
+
+          <p>
+            One workspace. Complete operational clarity.
+          </p>
+        </div>
+
+        <div class="environment-tag">
+          ● LOCAL ENVIRONMENT
+        </div>
+      </header>
+
+      <!-- HERO SECTION -->
+      <section class="hero">
+        <div>
+          <span class="hero-label">
+            PLATFORM OVERVIEW
+          </span>
+
+          <h2>
+            Build smarter.<br>
+            <em>Operate better.</em>
+          </h2>
+
+          <p>
+            Track execution, monitor application health,
+            and keep your workflow moving.
+          </p>
+
+          <a class="primary-btn" href="#tasks">
+            Explore Workspace →
+          </a>
+        </div>
+
+        <div class="hero-visual" aria-hidden="true">
+          <div class="orbit orbit-one"></div>
+          <div class="orbit orbit-two"></div>
+          <div class="orb-core">◈</div>
+        </div>
+      </section>
+
+      <!-- TASK STATISTICS -->
+      <section class="stats-grid" aria-label="Task statistics">
+
+        <article class="stat-card">
+          <span>TOTAL TASKS</span>
+          <strong id="total-tasks">—</strong>
+          <small>All tracked work</small>
+        </article>
+
+        <article class="stat-card">
+          <span>PENDING</span>
+          <strong id="pending-tasks">—</strong>
+          <small>Awaiting action</small>
+        </article>
+
+        <article class="stat-card">
+          <span>IN PROGRESS</span>
+          <strong id="active-tasks">—</strong>
+          <small>Currently running</small>
+        </article>
+
+        <article class="stat-card">
+          <span>COMPLETED</span>
+          <strong id="completed-tasks">—</strong>
+          <small>Successfully finished</small>
+        </article>
+
+      </section>
+
+      <!-- MAIN WORKSPACE -->
+      <div class="content-grid">
+
+        <!-- TASK WORKSPACE -->
+        <section class="panel" id="tasks">
+
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">
+                TASK OPERATIONS
+              </span>
+
+              <h2>Task Workspace</h2>
+            </div>
+
+            <button
+              class="secondary-btn"
+              id="new-task-btn"
+              type="button"
+              disabled
+            >
+              + New Task
+            </button>
+          </div>
+
+          <p class="muted">
+            Your current operational tasks.
+          </p>
+          <form id="task-form" class="task-form" hidden>
+  <h3>Create New Task</h3>
+
+  <label for="task-title">Task Title</label>
+  <input
+    id="task-title"
+    type="text"
+    minlength="3"
+    maxlength="150"
+    required
+  >
+
+  <label for="task-description">Description</label>
+  <textarea
+    id="task-description"
+    maxlength="2000"
+    rows="3"
+  ></textarea>
+
+  <label for="task-priority">Priority</label>
+  <select id="task-priority">
+    <option value="low">Low</option>
+    <option value="medium" selected>Medium</option>
+    <option value="high">High</option>
+  </select>
+
+  <div id="task-status-group" hidden>
+  <label for="task-status">Task Status</label>
+  <select id="task-status">
+    <option value="pending">Pending</option>
+    <option value="in_progress">In Progress</option>
+    <option value="completed">Completed</option>
+  </select>
+</div>
+
+  <div class="form-actions">
+    <button type="submit" class="primary-btn">
+      Save Task
+    </button>
+    <button type="button" id="cancel-task-btn" class="secondary-btn">
+      Cancel
+    </button>
+  </div>
+
+  <p id="task-form-error" role="alert"></p>
+</form>
+          <div
+            id="task-list"
+            class="task-list"
+            aria-live="polite"
+          >
+            <div class="empty-state">
+              Task integration coming next.
+            </div>
+          </div>
+
+        </section>
+
+        <!-- SYSTEM HEALTH -->
+        <section
+          class="panel system-panel"
+          id="infrastructure"
+        >
+
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">
+                PLATFORM SERVICES
+              </span>
+
+              <h2>System Health</h2>
+            </div>
+          </div>
+
+          <div class="service-row">
+            <span>FastAPI Service</span>
+
+            <span
+              id="api-status"
+              class="status-pill neutral"
+            >
+              Checking...
+            </span>
+          </div>
+
+          <div class="service-row">
+            <span>PostgreSQL</span>
+            <span class="status-pill neutral">
+              Not checked
+            </span>
+          </div>
+
+          <div class="service-row">
+            <span>CI/CD Pipeline</span>
+            <span class="status-pill neutral">
+              Not configured
+            </span>
+          </div>
+
+          <div class="service-row">
+            <span>Cloud Infrastructure</span>
+            <span class="status-pill neutral">
+              Not configured
+            </span>
+          </div>
+
+          <p class="panel-note">
+            Only verified infrastructure states are displayed.
+          </p>
+
+        </section>
+
+      </div>
+
+      <!-- FOOTER -->
+      <footer class="footer">
+        <span>CloudOps Pro © 2026</span>
+        <span>ENGINEERED FOR RELIABILITY</span>
+      </footer>
+
+    </main>
+  </div>
+</body>
+</html>

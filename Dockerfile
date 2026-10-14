@@ -1,0 +1,25 @@
+FROM python:3.12-slim AS builder
+
+WORKDIR /build
+
+COPY requirements-prod.txt .
+RUN pip install --no-cache-dir --prefix=/install -r requirements-prod.txt
+
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/install/bin:$PATH" \
+    PYTHONPATH="/install/lib/python3.12/site-packages"
+
+WORKDIR /app
+
+COPY --from=builder /install /install
+COPY app/ ./app/
+
+RUN useradd --create-home --uid 10001 appuser
+USER appuser
+
+EXPOSE 8000
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
