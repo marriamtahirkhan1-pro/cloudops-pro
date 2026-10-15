@@ -1,0 +1,66 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudops-api
+  namespace: cloudops-pro
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloudops-api
+  template:
+    metadata:
+      labels:
+        app: cloudops-api
+    spec:
+      containers:
+        - name: api
+          image: cloudops-pro-api:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8000
+          env:
+            - name: POSTGRES_HOST
+              value: postgres
+            - name: POSTGRES_DB
+              value: cloudops_k8s_db
+            - name: POSTGRES_USER
+              value: cloudops_k8s_user
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+          readinessProbe:
+            httpGet:
+              path: /health/live
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cloudops-api
+  namespace: cloudops-pro
+spec:
+  type: ClusterIP
+  selector:
+    app: cloudops-api
+  ports:
+    - port: 8000
+      targetPort: 8000
