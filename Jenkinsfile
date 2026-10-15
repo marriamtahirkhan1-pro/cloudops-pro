@@ -18,11 +18,17 @@ pipeline {
             steps {
                 sh '''
                     set -eu
+
+                    echo "=== CloudOps Pro CI ==="
+
                     git --version
                     docker version
+
                     test -f Dockerfile
                     test -f requirements-prod.txt
                     test -f tests/test_api.py
+
+                    echo "Checkout verification passed."
                 '''
             }
         }
@@ -32,14 +38,21 @@ pipeline {
                 sh '''
                     set -eu
 
-                    # Clear only the dedicated CI volume.
+                    echo "=== Preparing CI Workspace ==="
+
+                    # Clean only the dedicated CI volume
+                    # and restore Jenkins UID/GID ownership.
                     docker run --rm \
-                      --user 1000:1000 \
+                      --user 0:0 \
                       -v "$CI_VOLUME:/workspace" \
                       alpine:3.20 \
-                      sh -c 'find /workspace -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +'
+                      sh -c '
+                        set -e
+                        find /workspace -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+                        chown 1000:1000 /workspace
+                      '
 
-                    # Copy only required application and test files.
+                    # Copy only application and test files.
                     tar -cf - \
                       app tests requirements-prod.txt |
                     docker run --rm -i \
@@ -48,6 +61,8 @@ pipeline {
                       -w /workspace \
                       python:3.12-slim \
                       tar -xf -
+
+                    echo "CI workspace prepared successfully."
                 '''
             }
         }
@@ -57,6 +72,8 @@ pipeline {
                 sh '''
                     set -eu
 
+                    echo "=== Running Automated API Tests ==="
+
                     docker run --rm \
                       --user 1000:1000 \
                       -e HOME=/tmp \
@@ -64,7 +81,18 @@ pipeline {
                       -v "$CI_VOLUME:/workspace" \
                       -w /workspace \
                       python:3.12-slim \
-                      sh -c 'pip install --quiet --target /tmp/ci-packages -r requirements-prod.txt pytest httpx && PYTHONPATH=/tmp/ci-packages:/workspace python -m pytest tests/test_api.py -q'
+                      sh -c '
+                        set -e
+                        pip install --quiet \
+                          --target /tmp/ci-packages \
+                          -r requirements-prod.txt \
+                          pytest httpx
+
+                        PYTHONPATH=/tmp/ci-packages:/workspace \
+                          python -m pytest tests/test_api.py -q
+                      '
+
+                    echo "Automated tests passed."
                 '''
             }
         }
@@ -74,8 +102,12 @@ pipeline {
                 sh '''
                     set -eu
 
+                    echo "=== Building Docker Image ==="
+
                     docker build --pull \
                       -t "$CI_IMAGE:ci-$BUILD_NUMBER" .
+
+                    echo "Docker image built successfully."
                 '''
             }
         }
@@ -83,13 +115,15 @@ pipeline {
 
     post {
         success {
-            echo 'CloudOps Pro CI successful.'
+            echo 'CloudOps Pro CI completed successfully.'
         }
+
         failure {
-            echo 'CloudOps Pro CI failed. Check console logs.'
+            echo 'CloudOps Pro CI failed. Review console logs.'
         }
+
         always {
-            echo 'Pipeline finished.'
+            echo 'Pipeline execution finished.'
         }
     }
 }
