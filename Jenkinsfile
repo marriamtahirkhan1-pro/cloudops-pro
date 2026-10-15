@@ -38,10 +38,9 @@ pipeline {
                 sh '''
                     set -eu
 
-                    echo "=== Preparing CI Workspace ==="
+                    echo "=== Preparing Isolated CI Workspace ==="
 
-                    # Clean only the dedicated CI volume
-                    # and restore Jenkins UID/GID ownership.
+                    # Clean only the dedicated CI volume.
                     docker run --rm \
                       --user 0:0 \
                       -v "$CI_VOLUME:/workspace" \
@@ -49,18 +48,25 @@ pipeline {
                       sh -c '
                         set -e
                         find /workspace -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
-                        chown 1000:1000 /workspace
                       '
 
-                    # Copy only application and test files.
-                    tar -cf - \
-                      app tests requirements-prod.txt |
+                    # Transfer project files as root inside
+                    # a temporary container.
+                    # Automated tests will run as non-root.
+                    tar -cf - app tests requirements-prod.txt |
                     docker run --rm -i \
-                      --user 1000:1000 \
+                      --user 0:0 \
                       -v "$CI_VOLUME:/workspace" \
                       -w /workspace \
                       python:3.12-slim \
-                      tar -xf -
+                      sh -c '
+                        set -e
+                        tar --no-same-owner -xf -
+                        chown -R 1000:1000 \
+                          /workspace/app \
+                          /workspace/tests \
+                          /workspace/requirements-prod.txt
+                      '
 
                     echo "CI workspace prepared successfully."
                 '''
@@ -78,18 +84,21 @@ pipeline {
                       --user 1000:1000 \
                       -e HOME=/tmp \
                       -e PYTHONDONTWRITEBYTECODE=1 \
-                      -v "$CI_VOLUME:/workspace" \
+                      -v "$CI_VOLUME:/workspace:ro" \
                       -w /workspace \
                       python:3.12-slim \
                       sh -c '
                         set -e
+
                         pip install --quiet \
                           --target /tmp/ci-packages \
                           -r requirements-prod.txt \
                           pytest httpx
 
                         PYTHONPATH=/tmp/ci-packages:/workspace \
-                          python -m pytest tests/test_api.py -q
+                          python -m pytest \
+                          -p no:cacheprovider \
+                          tests/test_api.py -q
                       '
 
                     echo "Automated tests passed."
