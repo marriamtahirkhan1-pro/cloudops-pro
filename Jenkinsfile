@@ -8,11 +8,16 @@ pipeline {
         timeout(time: 20, unit: 'MINUTES')
     }
 
+    environment {
+        CI_VOLUME = 'cloudops_ci_workspace'
+        CI_IMAGE = 'cloudops-pro-api'
+    }
+
     stages {
         stage('Checkout Verification') {
             steps {
                 sh '''
-                    echo "=== CloudOps Pro CI ==="
+                    set -eu
                     git --version
                     docker version
                     test -f Dockerfile
@@ -22,14 +27,44 @@ pipeline {
             }
         }
 
+        stage('Prepare Isolated Workspace') {
+            steps {
+                sh '''
+                    set -eu
+
+                    # Clear only the dedicated CI volume.
+                    docker run --rm \
+                      --user 1000:1000 \
+                      -v "$CI_VOLUME:/workspace" \
+                      alpine:3.20 \
+                      sh -c 'find /workspace -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +'
+
+                    # Copy only required application and test files.
+                    tar -cf - \
+                      app tests requirements-prod.txt |
+                    docker run --rm -i \
+                      --user 1000:1000 \
+                      -v "$CI_VOLUME:/workspace" \
+                      -w /workspace \
+                      python:3.12-slim \
+                      tar -xf -
+                '''
+            }
+        }
+
         stage('Automated Tests') {
             steps {
                 sh '''
+                    set -eu
+
                     docker run --rm \
-                      -v "$WORKSPACE:/workspace" \
+                      --user 1000:1000 \
+                      -e HOME=/tmp \
+                      -e PYTHONDONTWRITEBYTECODE=1 \
+                      -v "$CI_VOLUME:/workspace" \
                       -w /workspace \
                       python:3.12-slim \
-                      sh -c 'pip install --quiet -r requirements-prod.txt pytest httpx && python -m pytest tests/test_api.py -q'
+                      sh -c 'pip install --quiet --target /tmp/ci-packages -r requirements-prod.txt pytest httpx && PYTHONPATH=/tmp/ci-packages:/workspace python -m pytest tests/test_api.py -q'
                 '''
             }
         }
@@ -37,8 +72,10 @@ pipeline {
         stage('Docker Image Build') {
             steps {
                 sh '''
+                    set -eu
+
                     docker build --pull \
-                      -t cloudops-pro-api:ci-$BUILD_NUMBER .
+                      -t "$CI_IMAGE:ci-$BUILD_NUMBER" .
                 '''
             }
         }
@@ -46,14 +83,13 @@ pipeline {
 
     post {
         success {
-            echo 'CloudOps Pro CI completed successfully.'
+            echo 'CloudOps Pro CI successful.'
         }
         failure {
-            echo 'CloudOps Pro CI failed. Review stage logs.'
+            echo 'CloudOps Pro CI failed. Check console logs.'
         }
         always {
-            echo 'Pipeline execution finished.'
+            echo 'Pipeline finished.'
         }
     }
 }
-
