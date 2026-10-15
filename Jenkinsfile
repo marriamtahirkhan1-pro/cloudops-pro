@@ -50,9 +50,9 @@ pipeline {
                         find /workspace -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
                       '
 
-                    # Transfer project files using a temporary
-                    # root container.
-                    # Tests run separately as non-root.
+                    # Copy application and test files through
+                    # a temporary root container.
+                    # Tests will run separately as non-root.
                     tar -cf - app tests requirements-prod.txt |
                     docker run --rm -i \
                       --user 0:0 \
@@ -128,6 +128,10 @@ pipeline {
 
                     echo "=== Trivy Vulnerability Scan ==="
 
+                    mkdir -p security-reports
+
+                    # Trivy JSON output is captured by Jenkins.
+                    # No Jenkins workspace bind mount is required.
                     docker run --rm \
                       -v /var/run/docker.sock:/var/run/docker.sock \
                       -v trivy_cache:/root/.cache/ \
@@ -135,11 +139,27 @@ pipeline {
                       --image-src docker \
                       --scanners vuln \
                       --severity CRITICAL,HIGH \
+                      --format json \
                       --exit-code 0 \
-                      "$CI_IMAGE:ci-$BUILD_NUMBER"
+                      "$CI_IMAGE:ci-$BUILD_NUMBER" \
+                      > security-reports/trivy-report.json
 
-                    echo "Security scan completed (report-only mode)."
+                    python3 -m json.tool \
+                      security-reports/trivy-report.json \
+                      > /dev/null
+
+                    echo "Trivy JSON report generated successfully."
                 '''
+            }
+
+            post {
+                always {
+                    archiveArtifacts(
+                        artifacts: 'security-reports/trivy-report.json',
+                        allowEmptyArchive: false,
+                        fingerprint: true
+                    )
+                }
             }
         }
     }
